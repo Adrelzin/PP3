@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Painel de Teste - Sistema de Rotina Academica</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; color: #222; }
+  h1 { font-size: 22px; }
+  h2 { font-size: 16px; margin: 0 0 10px; border-bottom: 2px solid #2563eb; padding-bottom: 6px; }
+  .top-bar { background: #2563eb; color: white; padding: 14px 20px; border-radius: 8px; margin-bottom: 20px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+  .card { background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  .card.full { grid-column: 1 / -1; }
+  label { display: block; font-size: 12px; color: #555; margin-top: 8px; }
+  input, select, textarea { width: 100%; padding: 6px 8px; margin-top: 2px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
+  button { margin-top: 10px; padding: 7px 14px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; margin-right: 6px; }
+  button:hover { background: #1d4ed8; }
+  button.secondary { background: #6b7280; }
+  button.danger { background: #dc2626; }
+  .row { display: flex; gap: 6px; }
+  .row > div { flex: 1; }
+  pre { background: #111827; color: #4ade80; padding: 10px; border-radius: 6px; font-size: 12px; max-height: 220px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
+  .status-ok { color: #16a34a; font-weight: bold; }
+  .status-erro { color: #dc2626; font-weight: bold; }
+  .session-info { font-size: 13px; margin-top: 6px; }
+  table.grade-horario { width: 100%; max-width: 760px; margin-left: auto; margin-right: auto; border-collapse: collapse; margin-top: 14px; font-size: 12px; }
+  table.grade-horario th, table.grade-horario td { border: 1px solid #ddd; padding: 6px; text-align: center; vertical-align: top; }
+  table.grade-horario th { background: #2563eb; color: white; font-size: 11px; text-transform: uppercase; }
+  table.grade-horario th.col-hora { background: #1f2937; width: 70px; }
+  table.grade-horario td.hora { background: #f3f4f6; font-weight: bold; white-space: nowrap; }
+  table.grade-horario td.vazio { color: #bbb; }
+  .bloco-disciplina { background: #dbeafe; border-radius: 4px; padding: 4px; }
+  .bloco-disciplina .nome { font-weight: bold; display: block; }
+  .bloco-disciplina .remover { color: #dc2626; cursor: pointer; font-size: 11px; display: inline-block; margin-top: 3px; }
+  .bloco-disciplina .remover:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <h1>Sistema de Rotina Academica - Painel de Teste da API</h1>
+  <div class="session-info">Sessao: <span id="sessaoAtual">nao logado</span></div>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h2>Autenticacao </h2>
+
+    <div id="bloco_login">
+      <label>Email</label><input id="login_email" placeholder="seuemail@exemplo.com">
+      <label>Senha</label><input id="login_senha" type="text" placeholder="Senha">
+      <button onclick="login()">Login</button>
+      <button onclick="logout()" class="secondary">Logout</button>
+      <button onclick="togglePerfil()" class="secondary">Ver Perfil</button>
+      <div style="margin-top:10px;font-size:13px;">
+        Nao tem conta? <a href="#" onclick="mostrarCadastro(); return false;">Criar conta</a>
+      </div>
+    </div>
+
+    <div id="bloco_cadastro" style="display:none">
+      <label>Nome</label><input id="cad_nome" placeholder="Seu nome">
+      <label>Email</label><input id="cad_email" placeholder="seuemail@exemplo.com">
+      <label>Senha</label><input id="cad_senha" type="text" placeholder="Senha (min. 6 caracteres)">
+      <label>Tipo de usuario</label>
+      <select id="cad_tipo"><option value="">Selecione...</option><option value="Aluno">Aluno</option><option value="Professor">Professor</option><option value="Administrador">Administrador</option></select>
+      <label>Foto de perfil (opcional)</label><input id="cad_foto" type="file" accept=".png,.jpg,.jpeg">
+      <button onclick="cadastrar()">Cadastrar</button>
+      <div style="margin-top:10px;font-size:13px;">
+        Ja tem conta? <a href="#" onclick="mostrarLogin(); return false;">Fazer login</a>
+      </div>
+    </div>
+
+    <div id="bloco_perfil" style="display:none">
+      <div id="bloco_atualizar_foto" style="display:none">
+        <label>Atualizar foto</label><input id="atualizar_foto" type="file" accept=".png,.jpg,.jpeg">
+        <button onclick="atualizarFotoPerfil()" class="secondary">Salvar nova foto</button>
+      </div>
+      <img id="foto_perfil_preview" style="display:none;max-width:120px;border-radius:8px;margin-top:10px;">
+    </div>
+    <pre id="out_auth">--</pre>
+  </div>
+  <div class="card">
+    <h2>Disciplina</h2>
+    <label>Nome</label><input id="disc_nome" placeholder="Nome da disciplina">
+    <label>Descricao</label><input id="disc_desc" placeholder="Descricao (opcional)">
+    <button onclick="criarDisciplina()">Criar</button>
+    <button onclick="listarDisciplinas()" class="secondary">Listar</button>
+    <label>ID para buscar/editar/deletar</label><input id="disc_id" placeholder="ID da disciplina">
+    <button onclick="buscarDisciplina()" class="secondary">Buscar por ID</button>
+    <button onclick="atualizarDisciplina()" class="secondary">Atualizar</button>
+    <button onclick="deletarDisciplina()" class="danger">Deletar</button>
+    <pre id="out_disciplina">--</pre>
+  </div>
+  <div class="card">
+    <h2>Tarefa </h2>
+    <label>Titulo</label><input id="tar_titulo" placeholder="Titulo da tarefa">
+    <div class="row">
+      <div><label>Data de entrega</label><input id="tar_data" type="date"></div>
+      <div><label>Prioridade</label>
+        <select id="tar_prioridade"><option value="">Selecione...</option><option value="Baixa">Baixa</option><option value="Media">Media</option><option value="Alta">Alta</option></select>
+      </div>
+    </div>
+    <label>ID Disciplina</label><input id="tar_iddisc" placeholder="ID da disciplina">
+    <button onclick="criarTarefa()">Criar</button>
+    <button onclick="listarTarefas()" class="secondary">Listar</button>
+    <label>ID para buscar/editar/status/deletar</label><input id="tar_id" placeholder="ID da tarefa">
+    <button onclick="buscarTarefa()" class="secondary">Buscar por ID</button>
+    <select id="tar_status"><option>Pendente</option><option>Concluida</option></select>
+    <button onclick="atualizarStatusTarefa()" class="secondary">Atualizar Status</button>
+    <button onclick="deletarTarefa()" class="danger">Deletar</button>
+    <pre id="out_tarefa">--</pre>
+  </div>
+  <div class="card">
+    <h2>Prova </h2>
+    <label>Nome</label><input id="prova_nome" placeholder="Nome da prova">
+    <label>Data da prova</label><input id="prova_data" type="date">
+    <label>ID Disciplina</label><input id="prova_iddisc" placeholder="ID da disciplina">
+    <button onclick="criarProva()">Criar</button>
+    <button onclick="listarProvas()" class="secondary">Listar</button>
+    <label>ID para deletar</label><input id="prova_id" placeholder="ID da prova">
+    <button onclick="deletarProva()" class="danger">Deletar</button>
+    <pre id="out_prova">--</pre>
+  </div>
+  <div class="card">
+    <h2>Meta de Estudo </h2>
+    <label>Descricao</label><input id="meta_desc" placeholder="Descricao da meta">
+    <label>Prazo</label><input id="meta_prazo" type="date">
+    <button onclick="criarMeta()">Criar</button>
+    <button onclick="listarMetas()" class="secondary">Listar</button>
+    <label>ID / Progresso (0-100)</label>
+    <div class="row"><div><input id="meta_id" placeholder="ID da meta"></div><div><input id="meta_progresso" placeholder="0 a 100"></div></div>
+    <button onclick="atualizarProgressoMeta()" class="secondary">Atualizar Progresso</button>
+    <button onclick="deletarMeta()" class="danger">Deletar</button>
+    <pre id="out_meta">--</pre>
+  </div>
+  <div class="card full">
+    <h2>Horario de Estudo </h2>
+    <div class="row">
+      <div>
+        <label>Disciplina</label>
+        <select id="hor_iddisc"><option value="">Faca login primeiro</option></select>
+      </div>
+      <div>
+        <label>Dia da semana</label>
+        <select id="hor_dia"><option value="">Selecione...</option><option>Segunda</option><option>Terca</option><option>Quarta</option><option>Quinta</option><option>Sexta</option><option>Sabado</option><option>Domingo</option></select>
+      </div>
+    </div>
+    <div class="row">
+      <div><label>Hora inicio</label><input id="hor_inicio" type="time"></div>
+      <div><label>Hora fim</label><input id="hor_fim" type="time"></div>
+    </div>
+    <button onclick="criarHorario()">Adicionar ao horario</button>
+    <div id="grade_horario_container"></div>
+    <pre id="out_horario">--</pre>
+  </div>
+  <div class="card">
+    <h2>Notificacao</h2>
+    <p style="font-size:12px;color:#555">Historico de notificacoes geradas pelo sistema (ex: tarefa perto do prazo).</p>
+    <button onclick="listarNotificacoes()">Listar</button>
+    <button onclick="listarNotificacoesNaoLidas()" class="secondary">Listar Nao Lidas</button>
+    <label>ID para marcar como lida / deletar</label><input id="notif_id" placeholder="ID da notificacao">
+    <button onclick="marcarLidaNotificacao()" class="secondary">Marcar como Lida</button>
+    <button onclick="deletarNotificacao()" class="danger">Deletar</button>
+    <pre id="out_notificacao">--</pre>
+  </div>
+  <div class="card">
+    <h2>Documento da Tarefa</h2>
+    <p style="font-size:12px;color:#555">Anexa o arquivo do exercicio/atividade resolvido a uma tarefa. Tipos aceitos: pdf, doc, docx, png, jpg, jpeg, txt.</p>
+    <label>Tarefa</label>
+    <select id="doc_idtarefa"><option value="">Faca login primeiro</option></select>
+    <label>Arquivo</label><input id="doc_arquivo" type="file">
+    <button onclick="criarDocumento()">Anexar</button>
+    <button onclick="listarDocumentosPorTarefa()" class="secondary">Listar por Tarefa</button>
+    <label>ID para deletar</label><input id="doc_id" placeholder="ID do documento">
+    <button onclick="deletarDocumento()" class="danger">Deletar</button>
+    <pre id="out_documento">--</pre>
+  </div>
+
+</div>
+
+<script>
+const API_BASE = '/api';
+
+async function chamar(metodo, caminho, corpo) {
+  const opts = { method: metodo, headers: {'Content-Type':'application/json'}, credentials: 'include' };
+  if (corpo !== undefined) opts.body = JSON.stringify(corpo);
+  const resp = await fetch(API_BASE + caminho, opts);
+  let dados;
+  try { dados = await resp.json(); } catch(e) { dados = {}; }
+  return { status: resp.status, dados };
+}
+
+async function chamarComArquivo(metodo, caminho, formData) {
+  const resp = await fetch(API_BASE + caminho, { method: metodo, body: formData, credentials: 'include' });
+  let dados;
+  try { dados = await resp.json(); } catch(e) { dados = {}; }
+  return { status: resp.status, dados };
+}
+
+function mostrar(idPre, resultado) {
+  const cor = resultado.status >= 200 && resultado.status < 300 ? 'status-ok' : 'status-erro';
+  document.getElementById(idPre).innerHTML =
+    '<span class="' + cor + '">HTTP ' + resultado.status + '</span>\n' + JSON.stringify(resultado.dados, null, 2);
+}
+
+function atualizarSessaoLabel(texto, logado) {
+  document.getElementById('sessaoAtual').innerText = texto;
+  document.getElementById('bloco_atualizar_foto').style.display = logado ? 'block' : 'none';
+}
+
+async function cadastrar() {
+  const formData = new FormData();
+  formData.append('nome', document.getElementById('cad_nome').value);
+  formData.append('email', document.getElementById('cad_email').value);
+  formData.append('senha', document.getElementById('cad_senha').value);
+  formData.append('tipo_usuario', document.getElementById('cad_tipo').value);
+  const fotoInput = document.getElementById('cad_foto');
+  if (fotoInput.files.length) formData.append('foto_perfil', fotoInput.files[0]);
+  const r = await chamarComArquivo('POST', '/cadastro', formData);
+  mostrar('out_auth', r);
+  if (r.status === 201) {
+    document.getElementById('login_email').value = document.getElementById('cad_email').value;
+    mostrarLogin();
+  }
+}
+
+async function login() {
+  const r = await chamar('POST', '/login', {
+    email: document.getElementById('login_email').value,
+    senha: document.getElementById('login_senha').value
+  });
+  mostrar('out_auth', r);
+  if (r.status === 200) {
+    atualizarSessaoLabel(r.dados.usuario.nome + ' (id ' + r.dados.usuario.id_usuario + ')', true);
+    atualizarListaTarefasDocumento();
+    atualizarListaDisciplinasHorario();
+    renderizarGradeHorario();
+  }
+}
+
+function mostrarCadastro() {
+  document.getElementById('bloco_login').style.display = 'none';
+  document.getElementById('bloco_cadastro').style.display = 'block';
+}
+
+function mostrarLogin() {
+  document.getElementById('bloco_cadastro').style.display = 'none';
+  document.getElementById('bloco_login').style.display = 'block';
+}
+
+async function logout() {
+  await chamar('POST', '/logout');
+  window.location.reload();
+}
+
+function exibirFotoPerfil(caminhoFoto) {
+  const img = document.getElementById('foto_perfil_preview');
+  if (caminhoFoto) {
+    img.src = caminhoFoto + '?t=' + Date.now();
+    img.style.display = 'block';
+  } else {
+    img.style.display = 'none';
+  }
+}
+
+async function togglePerfil() {
+  const bloco = document.getElementById('bloco_perfil');
+  const abrindo = bloco.style.display === 'none';
+  if (!abrindo) {
+    bloco.style.display = 'none';
+    return;
+  }
+  const r = await chamar('GET', '/perfil');
+  mostrar('out_auth', r);
+  if (r.status === 200) {
+    exibirFotoPerfil(r.dados.foto_perfil);
+    bloco.style.display = 'block';
+  }
+}
+
+async function atualizarFotoPerfil() {
+  const fotoInput = document.getElementById('atualizar_foto');
+  if (!fotoInput.files.length) {
+    document.getElementById('out_auth').innerText = 'Selecione uma foto antes de salvar.';
+    return;
+  }
+  const formData = new FormData();
+  formData.append('foto_perfil', fotoInput.files[0]);
+  const r = await chamarComArquivo('POST', '/perfil/foto', formData);
+  mostrar('out_auth', r);
+  if (r.status === 200) exibirFotoPerfil(r.dados.foto_perfil);
+}
+
+async function criarDisciplina() {
+  const r = await chamar('POST', '/disciplinas', { nome: document.getElementById('disc_nome').value, descricao: document.getElementById('disc_desc').value });
+  mostrar('out_disciplina', r);
+  if (r.status === 201) atualizarListaDisciplinasHorario();
+}
+async function listarDisciplinas() { mostrar('out_disciplina', await chamar('GET', '/disciplinas')); }
+async function buscarDisciplina() { mostrar('out_disciplina', await chamar('GET', '/disciplinas/' + document.getElementById('disc_id').value)); }
+async function atualizarDisciplina() {
+  const r = await chamar('PUT', '/disciplinas/' + document.getElementById('disc_id').value, { nome: document.getElementById('disc_nome').value, descricao: document.getElementById('disc_desc').value });
+  mostrar('out_disciplina', r);
+}
+async function deletarDisciplina() {
+  const r = await chamar('DELETE', '/disciplinas/' + document.getElementById('disc_id').value);
+  mostrar('out_disciplina', r);
+  if (r.status === 200) { atualizarListaDisciplinasHorario(); renderizarGradeHorario(); }
+}
+
+async function criarTarefa() {
+  const r = await chamar('POST', '/tarefas', {
+    titulo: document.getElementById('tar_titulo').value,
+    data_entrega: document.getElementById('tar_data').value,
+    prioridade: document.getElementById('tar_prioridade').value,
+    id_disciplina: document.getElementById('tar_iddisc').value
+  });
+  mostrar('out_tarefa', r);
+  if (r.status === 201) atualizarListaTarefasDocumento();
+}
+async function listarTarefas() { mostrar('out_tarefa', await chamar('GET', '/tarefas')); }
+async function buscarTarefa() { mostrar('out_tarefa', await chamar('GET', '/tarefas/' + document.getElementById('tar_id').value)); }
+async function atualizarStatusTarefa() {
+  const r = await chamar('PATCH', '/tarefas/' + document.getElementById('tar_id').value + '/status', { status: document.getElementById('tar_status').value });
+  mostrar('out_tarefa', r);
+}
+async function deletarTarefa() {
+  const r = await chamar('DELETE', '/tarefas/' + document.getElementById('tar_id').value);
+  mostrar('out_tarefa', r);
+  if (r.status === 200) atualizarListaTarefasDocumento();
+}
+
+async function criarProva() {
+  const r = await chamar('POST', '/provas', {
+    nome: document.getElementById('prova_nome').value,
+    data_prova: document.getElementById('prova_data').value,
+    id_disciplina: document.getElementById('prova_iddisc').value
+  });
+  mostrar('out_prova', r);
+}
+async function listarProvas() { mostrar('out_prova', await chamar('GET', '/provas')); }
+async function deletarProva() { mostrar('out_prova', await chamar('DELETE', '/provas/' + document.getElementById('prova_id').value)); }
+
+async function criarMeta() {
+  const r = await chamar('POST', '/metas', { descricao: document.getElementById('meta_desc').value, prazo: document.getElementById('meta_prazo').value });
+  mostrar('out_meta', r);
+}
+async function listarMetas() { mostrar('out_meta', await chamar('GET', '/metas')); }
+async function atualizarProgressoMeta() {
+  const r = await chamar('PATCH', '/metas/' + document.getElementById('meta_id').value + '/progresso', { progresso: Number(document.getElementById('meta_progresso').value) });
+  mostrar('out_meta', r);
+}
+async function deletarMeta() { mostrar('out_meta', await chamar('DELETE', '/metas/' + document.getElementById('meta_id').value)); }
+
+async function criarHorario() {
+  const r = await chamar('POST', '/horarios', {
+    dia_semana: document.getElementById('hor_dia').value,
+    hora_inicio: document.getElementById('hor_inicio').value,
+    hora_fim: document.getElementById('hor_fim').value,
+    id_disciplina: document.getElementById('hor_iddisc').value
+  });
+  mostrar('out_horario', r);
+  if (r.status === 201) renderizarGradeHorario();
+}
+
+async function deletarHorario(id) {
+  const r = await chamar('DELETE', '/horarios/' + id);
+  mostrar('out_horario', r);
+  if (r.status === 200) renderizarGradeHorario();
+}
+
+async function atualizarListaDisciplinasHorario() {
+  const r = await chamar('GET', '/disciplinas');
+  const select = document.getElementById('hor_iddisc');
+  select.innerHTML = '';
+  if (r.status !== 200 || !Array.isArray(r.dados) || r.dados.length === 0) {
+    select.innerHTML = '<option value="">Nenhuma disciplina encontrada</option>';
+    return;
+  }
+  select.innerHTML = '<option value="">Selecione a disciplina...</option>';
+  r.dados.forEach(disciplina => {
+    const opt = document.createElement('option');
+    opt.value = disciplina.id_disciplina;
+    opt.textContent = disciplina.nome;
+    select.appendChild(opt);
+  });
+}
+
+const DIAS_GRADE = ['Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado', 'Domingo'];
+
+async function renderizarGradeHorario() {
+  const r = await chamar('GET', '/horarios');
+  const container = document.getElementById('grade_horario_container');
+  if (r.status !== 200) return;
+  const horarios = Array.isArray(r.dados) ? r.dados : [];
+
+  if (horarios.length === 0) {
+    container.innerHTML = '<p style="font-size:13px;color:#777;margin-top:14px;">Nenhum horario de estudo cadastrado ainda.</p>';
+    return;
+  }
+
+  const faixas = [...new Set(horarios.map(h => h.hora_inicio + '-' + h.hora_fim))]
+    .sort((a, b) => a.localeCompare(b));
+
+  const porFaixaEDia = {};
+  horarios.forEach(h => {
+    const faixa = h.hora_inicio + '-' + h.hora_fim;
+    porFaixaEDia[faixa] = porFaixaEDia[faixa] || {};
+    porFaixaEDia[faixa][h.dia_semana] = h;
+  });
+
+  let html = '<table class="grade-horario"><thead><tr><th class="col-hora">Horario</th>';
+  DIAS_GRADE.forEach(dia => html += '<th>' + dia + '</th>');
+  html += '</tr></thead><tbody>';
+
+  faixas.forEach(faixa => {
+    html += '<tr><td class="hora">' + faixa.replace('-', ' - ') + '</td>';
+    DIAS_GRADE.forEach(dia => {
+      const item = porFaixaEDia[faixa][dia];
+      if (item) {
+        html += '<td><div class="bloco-disciplina"><span class="nome">' + item.nome_disciplina + '</span>' +
+          '<span class="remover" onclick="deletarHorario(' + item.id_horario + ')">remover</span></div></td>';
+      } else {
+        html += '<td class="vazio">-</td>';
+      }
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+async function listarNotificacoes() { mostrar('out_notificacao', await chamar('GET', '/notificacoes')); }
+async function listarNotificacoesNaoLidas() { mostrar('out_notificacao', await chamar('GET', '/notificacoes/nao-lidas')); }
+async function marcarLidaNotificacao() { mostrar('out_notificacao', await chamar('PATCH', '/notificacoes/' + document.getElementById('notif_id').value + '/lida')); }
+async function deletarNotificacao() { mostrar('out_notificacao', await chamar('DELETE', '/notificacoes/' + document.getElementById('notif_id').value)); }
+
+async function atualizarListaTarefasDocumento() {
+  const r = await chamar('GET', '/tarefas');
+  const select = document.getElementById('doc_idtarefa');
+  select.innerHTML = '';
+  if (r.status !== 200 || !Array.isArray(r.dados) || r.dados.length === 0) {
+    select.innerHTML = '<option value="">Nenhuma tarefa encontrada</option>';
+    return;
+  }
+  select.innerHTML = '<option value="">Selecione a tarefa...</option>';
+  r.dados.forEach(tarefa => {
+    const opt = document.createElement('option');
+    opt.value = tarefa.id_tarefa;
+    opt.textContent = tarefa.titulo + ' (entrega: ' + tarefa.data_entrega + ')';
+    select.appendChild(opt);
+  });
+}
+
+async function criarDocumento() {
+  const arquivoInput = document.getElementById('doc_arquivo');
+  if (!arquivoInput.files.length) {
+    document.getElementById('out_documento').innerText = 'Selecione um arquivo antes de anexar.';
+    return;
+  }
+  const formData = new FormData();
+  formData.append('arquivo', arquivoInput.files[0]);
+  formData.append('id_tarefa', document.getElementById('doc_idtarefa').value);
+  const r = await chamarComArquivo('POST', '/documentos', formData);
+  mostrar('out_documento', r);
+}
+async function listarDocumentosPorTarefa() { mostrar('out_documento', await chamar('GET', '/documentos/tarefa/' + document.getElementById('doc_idtarefa').value)); }
+async function deletarDocumento() { mostrar('out_documento', await chamar('DELETE', '/documentos/' + document.getElementById('doc_id').value)); }
+
+async function verificarSessaoAtual() {
+  const r = await chamar('GET', '/perfil');
+  if (r.status === 200) {
+    atualizarSessaoLabel(r.dados.nome + ' (id ' + r.dados.id_usuario + ')', true);
+  } else {
+    atualizarSessaoLabel('nao logado', false);
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  verificarSessaoAtual();
+  atualizarListaTarefasDocumento();
+  atualizarListaDisciplinasHorario();
+  renderizarGradeHorario();
+});
+</script>
+</body>
+</html>
